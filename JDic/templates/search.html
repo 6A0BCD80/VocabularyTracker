@@ -1,0 +1,291 @@
+<link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.1.3/css/bootstrap.min.css" integrity="sha384-MCw98/SFnGE8fJT3GXwEOngsV7Zt27NXFoaoApmYm81iuXoPkFOJwJ8ERdknLPMO" crossorigin="anonymous">
+<script src="https://stackpath.bootstrapcdn.com/bootstrap/4.1.3/js/bootstrap.min.js" integrity="sha384-ChfqqxuZUCnJSK3+MXmPNIyE6ZbWh2IMqE241rYiqJxyMiZ6OW/JmZQ5stwEULTy" crossorigin="anonymous"></script>
+<script src="https://code.jquery.com/jquery-3.3.1.min.js">
+</script>
+
+<style type="text/css">
+    .searchStyle
+    {
+        padding-top: 10px;
+        padding-bottom: 30px;
+        padding-left: 30px;
+    }
+    .resultStyle
+    {
+        padding-left: 10px;
+        padding-bottom: 30px;
+    }
+    .resultRowStyle:
+    {
+        padding-top: 50px !important;
+        padding-bottom: 50px !important;
+    }
+    .searchButtonStyle:
+    {
+        padding-left: 5px;
+    }
+    .furiganaClass:
+    {
+		font-size: 14px;
+    }
+    .nextButton:
+    {
+		padding-top: 10px;
+		padding-bottom: 10px;
+    }
+</style>
+<div class="searchStyle">
+
+	<div class="container" >
+			<div class="row">
+				<div class="col-12">
+					Search Kanji
+				</div>
+			</div>
+			<div class="row">
+				
+				<div class="col-12">
+					<input type="input" id='word'>
+					<button id='searchButton' class="btn btn-primary">Search</button>
+				</div>
+			</div>
+    </div>
+</div>
+<div id="results"   >
+	<div class="container">
+		<div class="row">
+			<div class="col-5">
+				<div class="container" id="Resultcontainer" >
+					<div class="row">
+						<div class="col-4">
+							Word	
+						</div>
+						<div class="col-4">
+							Meaning
+						</div>
+						<div class="col-4">
+				
+						</div>
+					</div>
+				</div>
+			</div>
+
+			<div class="col-7">
+					<div class="nextButton">
+						<button  class="btn btn-primary m-4" id="nextButton">next</button>
+						<button  class="btn btn-primary m-4" id="prevButton">prev</button>
+					</div>
+					<div class="container" id="displayKanji">
+						<div class="row">
+							<div class="col-2">
+							Word
+							</div>
+							<div class="col-2">
+							Hirigana
+							</div>
+							<div class="col-6">
+							Meaning
+							</div>
+							<div class="col-2">
+				
+							</div>
+						</div>
+
+						{% for kanji in all_kanjis %}
+						<div class="row pt-4 kanji_display">
+							<div class="col-2">
+								{{ kanji.kanjis }}
+							</div>
+							<div class="col-2">
+								{{ kanji.kun}}
+							</div>
+							<div class="col-6">
+								{{ kanji.meaning}}
+							</div>
+							<div class="col-2">
+								<button class="btn btn-primary" onClick="deleteKanji({{ kanji.id}})">-</button>
+							</div>
+						</div>
+						{%endfor%}
+					</div>
+				</div>
+			</div>
+		</div>
+	</div>
+</div>
+
+<script>
+	current_page = 5;
+	prev_page = 0;
+
+	function Get_Page(current, prev)
+	{
+		var word = $("#word").val();
+		$.ajax({
+			url:'/jdic/next',
+			method: 'POST',
+			headers: {'X-CSRFToken':'{{ csrf_token }}'},
+			data: { "current_page" : current_page, "prev_page": prev_page },
+			dataType: 'json'
+		}).done(function(response)
+		{
+			if (response.length != 0)
+			{
+				$(".kanji_display").remove();
+
+				for (response_index=0;response_index<response.length;response_index++)
+				{
+					newKanjiRow = document.createElement('div');
+					$(newKanjiRow).attr("id","displayKanji" + response_index.toString() );
+					$(newKanjiRow).addClass("row pt-4 kanji_display");
+					$(newKanjiRow).appendTo($("#displayKanji"));
+
+					newKanjiCol= document.createElement('div');
+					$(newKanjiCol).html('' + response[response_index].kanji);
+					$(newKanjiCol).addClass("col-2");
+					$(newKanjiCol).appendTo($("#displayKanji" + response_index.toString()));
+
+					newKanjiCol= document.createElement('div');
+					$(newKanjiCol).html('' + response[response_index].kun);
+					$(newKanjiCol).addClass("col-2");
+					$(newKanjiCol).appendTo($("#displayKanji" + response_index.toString()));
+
+					newKanjiCol= document.createElement('div');
+					$(newKanjiCol).html('' + response[response_index].meaning);
+					$(newKanjiCol).addClass("col-6");
+					$(newKanjiCol).appendTo($("#displayKanji" + response_index.toString()));
+
+
+				}
+			}
+		}).fail(function(error) 
+		{
+			
+		});
+	}
+	$('#nextButton').click(function()
+	{
+		prev_page = current_page;
+		current_page = current_page + 5;
+		
+		Get_Page(current_page, prev_page);
+
+	});
+	$('#prevButton').click(function()
+	{
+		prev_page -=5;
+		current_page -=5 ;
+		
+		Get_Page(current_page, prev_page);
+
+	});
+
+	$('#searchButton').click(function() 
+	{
+		$(".resultID").remove();
+		var word = $("#word").val();
+		$.ajax({
+			url:'/jdic/searchjisho',
+			method: 'POST',
+			headers: {'X-CSRFToken':'{{ csrf_token }}'},
+			data: { "word" : word },
+			dataType: 'json'
+		}).done(function(response) 
+		{
+			for (index = 0; index < response.length;index++)
+			{
+				var r = response[index];
+				var strJson = JSON.stringify(r);
+
+				newKanjiRow = document.createElement('div');
+				$(newKanjiRow).addClass("row pt-4 resultID resultRowStyle")
+					.appendTo($("#Resultcontainer"));
+
+				newKanjiCol= document.createElement('div');
+
+				furiganas = r['furiganas'];
+
+				newFuriganaDiv = document.createElement('div');
+
+				var hirigana = "";
+
+				for (furiganaIndex = 0;furiganaIndex < furiganas.length;furiganaIndex++)
+				{
+					newFuriganaSpan = document.createElement('span');
+					$(newFuriganaSpan).addClass("furiganaClass");
+					$(newFuriganaSpan).html("<font size=1 face=\"Source Han Sans\">" + furiganas[furiganaIndex] + "</font>");
+					$(newFuriganaSpan).appendTo(newFuriganaDiv);
+
+					hirigana += furiganas[furiganaIndex];
+				}
+				$(newFuriganaDiv).appendTo(newFuriganaDiv);
+
+				newKanjiDiv  = document.createElement('div');
+
+				$(newKanjiDiv).attr("id","theHirigana" + index.toString() )
+				$(newKanjiDiv).val(hirigana   );
+				$(newKanjiDiv).html("<span>" + r['kanji'] + "</span>");
+				$(newKanjiDiv).appendTo(newFuriganaDiv);
+			
+
+				$(newKanjiCol).addClass("col-4")
+
+					.attr("id","theKanji" + index.toString() )
+					.val(r['kanji'])
+					.appendTo(newKanjiRow);
+				
+
+				$(newFuriganaDiv).appendTo(newKanjiCol);
+				newMeaningCol= document.createElement('div');
+				$(newMeaningCol).addClass("col-4")
+					.attr("id","theMeaning" + index.toString() )
+					.val(r['meaning'])
+					.html(r['meaning'])
+					.appendTo(newKanjiRow);
+
+				newButtonCol= document.createElement('div');
+				$(newButtonCol).addClass("col-4")
+					.appendTo(newKanjiRow);
+
+
+				newButton = document.createElement('button');
+				$(newButton).addClass("btn btn-primary")
+					.html("+")
+					.attr("id",index.toString() )
+					.appendTo(newButtonCol)
+					.click(function()
+					 {
+					 	kanjiSubmit = 
+					 	{
+					 		'kanji': $('#theKanji' + this.id).val(),
+					 		'hirigana': $('#theHirigana' + this.id).val(),
+					 		'meaning': $('#theMeaning' + this.id).val()
+					 	};
+						
+						$.ajax({
+							url:'/jdic/addkanji',
+							method: 'POST',
+							headers: {'X-CSRFToken':'{{ csrf_token }}'},
+							data:  kanjiSubmit  ,
+							dataType: 'json'
+						}).done(function(response) 
+						{
+							
+						}
+						);
+						
+					});
+			}
+		
+
+
+		}).fail(function(error) 
+		{
+		});
+		
+		
+	});
+
+	
+</script>
+
